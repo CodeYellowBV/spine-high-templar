@@ -37,16 +37,15 @@ test('Should receive a message as object', done => {
     })
 });
 
-// test('Should send a message correctly', done => {
-//     mockServer.on('message', msg => {
-//         expect(msg).toEqual(
-//             JSON.stringify({
-//                 type: 'foo',
-//                 authorization: null,
-//             })
-//         );
-//         done();
-//     });
-//     const socket = new Socket({});
-//     socket.send({ type: 'foo' });
-// });
+test('Should send a message correctly', done => {
+    mockServer.on('message', msg => {
+        expect(msg).toEqual(
+            JSON.stringify({
+                type: 'foo',
+            })
+        );
+        done()
+    });
+    const socket = new Socket();
+    socket.send({ type: 'foo' });
+});

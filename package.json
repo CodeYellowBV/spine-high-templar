@@ -1,7 +1,7 @@
 {
   "name": "spine-high-templar",
   "version": "0.0.1",
-  "license": "ISC",
+  "license": "MIT",
   "author": "Jasper Stam <jasper@codeyellow.nl>",
   "description": "Websocket addon for MobX-Spine",
   "module": "dist/spine-high-templar.es.js",
@@ -28,8 +28,8 @@
     ]
   },
   "dependencies": {
-    "uuid": "^3.1.0",
-    "mitt": "^1.1.2"
+    "mitt": "^1.1.2",
+    "uuid": "^3.1.0"
   },
   "engines": {
     "node": ">=4"
@@ -39,7 +39,6 @@
   ],
   "devDependencies": {
     "axios": "^0.16.1",
-    "mock-socket": "^7.0.0",
     "babel-core": "^6.22.1",
     "babel-eslint": "^7.1.1",
     "babel-jest": "^20.0.3",
@@ -52,12 +51,13 @@
     "eslint": "^3.14.1",
     "eslint-config-codeyellow": "^4.0.0",
     "husky": "^0.13.2",
-    "jest": "^20.0.3",
+    "jest": "^21.0.1",
     "lint-staged": "^3.4.0",
     "lodash": "^4.17.4",
     "mobx": "^3.0.2",
-    "moment": "^2.18.1",
     "mobx-spine": "^0.16.5",
+    "mock-socket": "^7.0.0",
+    "moment": "^2.18.1",
     "prettier": "^1.0.2",
     "rollup": "^0.42.0",
     "rollup-plugin-babel": "^2.7.1"
