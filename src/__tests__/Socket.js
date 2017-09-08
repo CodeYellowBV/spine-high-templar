@@ -49,3 +49,16 @@ test('Should send a message correctly', done => {
     const socket = new Socket();
     socket.send({ type: 'foo' });
 });
+
+test('Should send pings', done => {
+    mockServer.on('message', msg => {
+        expect(msg).toEqual('ping');
+        done()
+    });
+    new Socket({
+        connectDelay: 50,
+        pingInterval: 100,
+    });
+});
+
+

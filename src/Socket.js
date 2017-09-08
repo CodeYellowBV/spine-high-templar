@@ -2,8 +2,11 @@ import mitt from 'mitt';
 
 export default class Socket {
     instance = null;
-    messageHandlers = [];
-    pingInterval = null;
+    pingIntervalHandle = null;
+
+    pingInterval = 30000;
+    reconnectInterval = 2000;
+    connectDelay = 200;
 
     constructor(props = {}) {
         this._events = mitt();
@@ -12,6 +15,12 @@ export default class Socket {
 
     initialize(props) {
         this.instance = new WebSocket(props.url);
+
+        for (let propName of ['pingInterval', 'reconnectInterval', 'connectDelay']) {
+            if (props[propName] !== undefined) {
+                this[propName] = props[propName]
+            }
+        }
 
         this.instance.onopen = () => {
             this._events.emit('open');
@@ -23,7 +32,7 @@ export default class Socket {
             this._stopPingInterval();
             setTimeout(() => {
                 this.initialize();
-            }, 2000);
+            }, this.reconnectInterval);
         };
 
         this.instance.onmessage = evt => {
@@ -45,10 +54,6 @@ export default class Socket {
         return this._events.off(...args);
     }
 
-    addMessageHandler(callback) {
-        this.messageHandlers.push(callback);
-    }
-
     send(options) {
         const msg = {
             type: options.type,
@@ -61,7 +66,7 @@ export default class Socket {
         if (this.instance.readyState !== 1) {
             setTimeout(() => {
                 this._sendDirectly(msg);
-            }, 200);
+            }, this.connectDelay);
             return;
         }
         this._sendDirectly(msg);
@@ -72,15 +77,15 @@ export default class Socket {
     }
 
     _initiatePingInterval() {
-        this.pingInterval = setInterval(() => {
+        this.pingIntervalHandle = setInterval(() => {
             this.instance.send('ping');
-        }, 30000);
+        }, this.pingInterval);
     }
 
     _stopPingInterval() {
-        if (this.pingInterval) {
-            clearInterval(this.pingInterval);
-            this.pingInterval = null;
+        if (this.pingIntervalHandle) {
+            clearInterval(this.pingIntervalHandle);
+            this.pingIntervalHandle = null;
         }
     }
 }
