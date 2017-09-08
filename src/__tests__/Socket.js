@@ -27,8 +27,8 @@ test('Should open a WebSocket successfully', done => {
 });
 
 test('Should receive a message as object', done => {
-    mockServer.on('connection', ws => {
-        ws.send(JSON.stringify({ foo: 'bar' }));
+    mockServer.on('connection', server => {
+        server.send(JSON.stringify({ foo: 'bar' }));
     });
     const socket = new Socket();
     socket.on('message', msg => {
@@ -61,4 +61,17 @@ test('Should send pings', done => {
     });
 });
 
+test('Should try to reconnect after a disconnect', done => {
+    let count = 0;
+    mockServer.on('connection', (server, ws) => {
+        if (count > 0) {
+            done();
+        }
+        ws.close();
+        count += 1;
+    });
+    new Socket({
+        reconnectInterval: 50,
+    });
+});
 

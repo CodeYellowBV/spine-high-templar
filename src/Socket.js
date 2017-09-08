@@ -31,7 +31,7 @@ export default class Socket {
             this._events.emit('close');
             this._stopPingInterval();
             setTimeout(() => {
-                this.initialize();
+                this.initialize(props);
             }, this.reconnectInterval);
         };
 
