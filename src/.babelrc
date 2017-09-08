@@ -1,0 +1,23 @@
+{
+    "env": {
+        "production": {
+            "presets": [
+                ["es2015", { "modules": false }],
+                "stage-2"
+            ],
+            "plugins": [
+                "transform-decorators-legacy",
+                "external-helpers"
+            ]
+        },
+        "test": {
+            "presets": [
+                "stage-2"
+            ],
+            "plugins": [
+                "transform-decorators-legacy",
+                "transform-es2015-modules-commonjs"
+            ]
+        }
+    }
+}
