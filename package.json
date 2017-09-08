@@ -38,7 +38,6 @@
     "dist/"
   ],
   "devDependencies": {
-    "axios": "^0.16.1",
     "babel-core": "^6.22.1",
     "babel-eslint": "^7.1.1",
     "babel-jest": "^20.0.3",
@@ -53,17 +52,10 @@
     "husky": "^0.13.2",
     "jest": "^21.0.1",
     "lint-staged": "^3.4.0",
-    "lodash": "^4.17.4",
-    "mobx": "^3.0.2",
-    "mobx-spine": "^0.16.5",
     "mock-socket": "^7.0.0",
-    "moment": "^2.18.1",
     "prettier": "^1.0.2",
     "rollup": "^0.42.0",
     "rollup-plugin-babel": "^2.7.1"
-  },
-  "peerDependencies": {
-    "mobx-spine": "^0.16.5"
   },
   "jest": {
     "roots": [

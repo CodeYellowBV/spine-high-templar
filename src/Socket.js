@@ -1,8 +1,11 @@
 import mitt from 'mitt';
+import uuid from 'uuid/v1';
+
 
 export default class Socket {
     instance = null;
     pingIntervalHandle = null;
+    publishHandlers = {};
 
     pingInterval = 30000;
     reconnectInterval = 2000;
@@ -70,6 +73,49 @@ export default class Socket {
             return;
         }
         this._sendDirectly(msg);
+    }
+
+    subscribe({ room, onPublish }) {
+        const requestId = uuid();
+
+        if (onPublish) {
+            this._addPublishHandler(requestId, onPublish);
+        }
+
+        this.send({
+            type: 'subscribe',
+            requestId,
+            room,
+        });
+
+        return requestId;
+    }
+
+    unsubscribe(requestId) {
+        this._removePublishHandler(requestId);
+        this.send({
+            type: 'unsubscribe',
+            requestId,
+        });
+    }
+
+    _addPublishHandler(requestId, handler) {
+        const wrappedHandler = msg => {
+            if (msg.requestId !== requestId || msg.type !== 'publish') {
+                return false;
+            }
+            handler(msg);
+        }
+        this.on('message', wrappedHandler)
+        this.publishHandlers[requestId] = wrappedHandler;
+    }
+
+    _removePublishHandler(requestId) {
+        const handler = this.publishHandlers[requestId];
+        if (!handler) return;
+
+        delete this.publishHandlers[requestId];
+        this.off('message', handler);
     }
 
     _sendDirectly(msg) {
