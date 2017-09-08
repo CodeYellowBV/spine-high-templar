@@ -90,6 +90,7 @@ test('Should remove onPublish after unsubscribe', done => {
             requestId,
         }));
         expect(publishesReceived).toBe(1);
+        expect(socket.publishHandlers).toEqual({});
         done();
     });
 

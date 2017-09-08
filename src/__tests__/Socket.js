@@ -53,6 +53,7 @@ test('Should send a message correctly', done => {
 test('Should send pings', done => {
     mockServer.on('message', msg => {
         expect(msg).toEqual('ping');
+        mockServer.send('pong');
         done()
     });
     new Socket({
