@@ -4,7 +4,7 @@ const babel = require('rollup-plugin-babel');
 rollup
     .rollup({
         entry: './src/index.js',
-        external: ['mobx=spine', 'uuid', 'mitt'],
+        external: ['uuid', 'mitt'],
         plugins: [
             babel({
                 exclude: 'node_modules/**',
@@ -23,7 +23,6 @@ rollup
             dest: 'dist/spine-high-templar.umd.js',
             globals: {
                 mitt: 'mitt',
-                'mobx-spine': 'mobx-spine',
                 uuid: 'uuid',
             },
         });
