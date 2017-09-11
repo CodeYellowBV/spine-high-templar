@@ -17,7 +17,11 @@ export default class Socket {
     }
 
     initialize(props) {
-        this.instance = new WebSocket(props.url);
+        let url = props.url;
+        if (props.token) {
+            url += `?token=${props.token}`
+        }
+        this.instance = new WebSocket(url);
 
         for (let propName of ['pingInterval', 'reconnectInterval', 'connectDelay']) {
             if (props[propName] !== undefined) {

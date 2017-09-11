@@ -26,6 +26,17 @@ test('Should open a WebSocket successfully', done => {
     new Socket({});
 });
 
+test('Should accept a token option', done => {
+    mockServer.stop();
+    mockServer = new Server(url + '?token=foobar');
+    mockServer.on('connection', () => {
+        done();
+    });
+    new Socket({
+        token: 'foobar',
+    });
+})
+
 test('Should receive a message as object', done => {
     mockServer.on('connection', server => {
         server.send(JSON.stringify({ foo: 'bar' }));
