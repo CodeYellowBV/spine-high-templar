@@ -45,7 +45,11 @@ var Socket = function () {
         value: function initialize(props) {
             var _this = this;
 
-            this.instance = new WebSocket(props.url);
+            var url = props.url;
+            if (props.token) {
+                url += '?token=' + props.token;
+            }
+            this.instance = new WebSocket(url);
 
             var _arr = ['pingInterval', 'reconnectInterval', 'connectDelay'];
             for (var _i = 0; _i < _arr.length; _i++) {
