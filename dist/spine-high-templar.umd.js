@@ -38,9 +38,9 @@ var Socket = function () {
         this.instance = null;
         this.pingIntervalHandle = null;
         this.publishHandlers = {};
+        this.pendingSendMessages = [];
         this.pingInterval = 30000;
         this.reconnectInterval = 2000;
-        this.connectDelay = 200;
 
         this._events = mitt();
         this.initialize(props);
@@ -57,7 +57,7 @@ var Socket = function () {
             }
             this.instance = new WebSocket(url);
 
-            var _arr = ['pingInterval', 'reconnectInterval', 'connectDelay'];
+            var _arr = ['pingInterval', 'reconnectInterval'];
             for (var _i = 0; _i < _arr.length; _i++) {
                 var propName = _arr[_i];
                 if (props[propName] !== undefined) {
@@ -67,6 +67,7 @@ var Socket = function () {
 
             this.instance.onopen = function () {
                 _this._events.emit('open');
+                _this._sendPendingMessages();
                 _this._initiatePingInterval();
             };
 
@@ -105,8 +106,6 @@ var Socket = function () {
     }, {
         key: 'send',
         value: function send(options) {
-            var _this2 = this;
-
             var msg = {
                 type: options.type,
                 data: options.data,
@@ -116,11 +115,10 @@ var Socket = function () {
             // console.log('[sent]', msg);
             // Wait for a while if the socket is not yet done connecting...
             if (this.instance.readyState !== 1) {
-                setTimeout(function () {
-                    _this2._sendDirectly(msg);
-                }, this.connectDelay);
+                this.pendingSendMessages.push(msg);
                 return;
             }
+
             this._sendDirectly(msg);
         }
     }, {
@@ -174,6 +172,34 @@ var Socket = function () {
             this.off('message', handler);
         }
     }, {
+        key: '_sendPendingMessages',
+        value: function _sendPendingMessages() {
+            var _iteratorNormalCompletion = true;
+            var _didIteratorError = false;
+            var _iteratorError = undefined;
+
+            try {
+                for (var _iterator = this.pendingSendMessages[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                    var msg = _step.value;
+
+                    this._sendDirectly(msg);
+                }
+            } catch (err) {
+                _didIteratorError = true;
+                _iteratorError = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion && _iterator.return) {
+                        _iterator.return();
+                    }
+                } finally {
+                    if (_didIteratorError) {
+                        throw _iteratorError;
+                    }
+                }
+            }
+        }
+    }, {
         key: '_sendDirectly',
         value: function _sendDirectly(msg) {
             this.instance.send(JSON.stringify(msg));
@@ -181,10 +207,10 @@ var Socket = function () {
     }, {
         key: '_initiatePingInterval',
         value: function _initiatePingInterval() {
-            var _this3 = this;
+            var _this2 = this;
 
             this.pingIntervalHandle = setInterval(function () {
-                _this3.instance.send('ping');
+                _this2.instance.send('ping');
             }, this.pingInterval);
         }
     }, {
