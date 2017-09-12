@@ -21,24 +21,24 @@ class Socket extends S {
 }
 
 test('Should send a subscribe message when subscribing', done => {
-    let requestId = null;
+    let subscription = null;
 
     const socket = new Socket();
     mockServer.on('message', msg => {
         msg = JSON.parse(msg);
         expect(msg).toEqual({
             type: 'subscribe',
-            requestId,
+            requestId: subscription.requestId,
             room,
         })
         done()
     });
 
-    requestId = socket.subscribe({ room });
+    subscription = socket.subscribe({ room });
 });
 
 test('Should trigger onPublish', done => {
-    let requestId = null;
+    let subscription = null;
 
     const socket = new Socket();
     mockServer.on('message', msg => {
@@ -53,22 +53,22 @@ test('Should trigger onPublish', done => {
         mockServer.send(JSON.stringify({
             type: 'publish',
             data: 'bar',
-            requestId,
+            requestId: subscription.requestId,
         }));
     });
 
-    requestId = socket.subscribe({ room, onPublish: (msg) => {
+    subscription = socket.subscribe({ room, onPublish: (msg) => {
         expect(msg).toEqual({
             type: 'publish',
             data: 'bar',
-            requestId,
+            requestId: subscription.requestId,
         })
         done();
     } });
 });
 
 test('Should remove onPublish after unsubscribe', done => {
-    let requestId = null;
+    let subscription = null;
     let publishesReceived = 0;
 
     const socket = new Socket();
@@ -82,26 +82,26 @@ test('Should remove onPublish after unsubscribe', done => {
         mockServer.send(JSON.stringify({
             type: 'publish',
             data: 'first',
-            requestId,
+            requestId: subscription.requestId,
         }));
         mockServer.send(JSON.stringify({
             type: 'publish',
             data: 'second',
-            requestId,
+            requestId: subscription.requestId,
         }));
         expect(publishesReceived).toBe(1);
-        expect(socket.publishHandlers).toEqual({});
+        expect(socket.subscriptions).toEqual([]);
         done();
     });
 
-    requestId = socket.subscribe({ room, onPublish: (msg) => {
+    subscription = socket.subscribe({ room, onPublish: (msg) => {
         publishesReceived += 1;
-        socket.unsubscribe(requestId);
+        socket.unsubscribe(subscription);
     }});
 })
 
 test('Should send an unsubscribe message when unsubscribing', done => {
-    let requestId = null;
+    let subscription = null;
     let subscribeCalled = false;
 
     const socket = new Socket();
@@ -111,7 +111,7 @@ test('Should send an unsubscribe message when unsubscribing', done => {
         if (msg.type === 'subscribe') {
             expect(msg).toEqual({
                 type: 'subscribe',
-                requestId,
+                requestId: subscription.requestId,
                 room,
             })
             subscribeCalled = true;
@@ -121,11 +121,37 @@ test('Should send an unsubscribe message when unsubscribing', done => {
         expect(subscribeCalled).toBe(true);
         expect(msg).toEqual({
             type: 'unsubscribe',
-            requestId,
+            requestId: subscription.requestId,
         });
         done()
     });
 
-    requestId = socket.subscribe({ room });
-    socket.unsubscribe(requestId);
+    subscription = socket.subscribe({ room });
+    socket.unsubscribe(subscription);
 });
+
+// test('Should resubscribe after a socket reconnect', done => {
+//     let connectcount = 0;
+//     let subscribeCount = 0;
+//     mockServer.on('connection', (server, ws) => {
+//         if (connectcount === 0) {
+//             ws.close();
+//         }
+//         connectcount += 1;
+//     });
+//     mockServer.on('message', msg => {
+//         msg = JSON.parse(msg);
+
+//         expect(msg.type).toBe('subscribe');
+//         expect(msg.room).toEqual(room);
+//         subscribeCount += 1;
+
+//         if (subscribeCount === 2) {
+//             done();
+//         }
+//     })
+//     new Socket({
+//         reconnectInterval: 50,
+//         pingInterval: 10000,
+//     });
+// });

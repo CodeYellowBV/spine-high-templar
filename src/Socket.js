@@ -1,11 +1,11 @@
 import mitt from 'mitt';
-import uuid from 'uuid/v1';
+import Subscription from './Subscription';
 
 
 export default class Socket {
     instance = null;
     pingIntervalHandle = null;
-    publishHandlers = {};
+    subscriptions = [];
     pendingSendMessages = [];
 
     pingInterval = 30000;
@@ -80,38 +80,29 @@ export default class Socket {
     }
 
     subscribe({ room, onPublish }) {
-        const requestId = uuid();
+        const sub = new Subscription({ room, onPublish, socket: this });
 
-        if (onPublish) {
-            this._addPublishHandler(requestId, onPublish);
-        }
+        this.subscriptions.push(sub);
 
         this.send({
             type: 'subscribe',
-            requestId,
+            requestId: sub.requestId,
             room,
         });
 
-        return requestId;
+        return sub;
     }
 
-    unsubscribe(requestId) {
-        this._removePublishHandler(requestId);
+    unsubscribe(subscription) {
+        subscription.stopListening();
+
+        const subIndex = this.subscriptions.indexOf(subscription);
+        this.subscriptions.splice(subIndex, 1);
+        // this._removePublishHandler(requestId);
         this.send({
             type: 'unsubscribe',
-            requestId,
+            requestId: subscription.requestId,
         });
-    }
-
-    _addPublishHandler(requestId, handler) {
-        const wrappedHandler = msg => {
-            if (msg.requestId !== requestId || msg.type !== 'publish') {
-                return false;
-            }
-            handler(msg);
-        }
-        this.on('message', wrappedHandler)
-        this.publishHandlers[requestId] = wrappedHandler;
     }
 
     _removePublishHandler(requestId) {
