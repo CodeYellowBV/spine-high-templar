@@ -1,4 +1,4 @@
-import { Server } from 'mock-socket';
+import { Server, WebSocket } from 'mock-socket';
 import S from '../Socket';
 
 let mockServer = null;
@@ -11,6 +11,51 @@ beforeEach(() => {
 afterEach(done => {
     mockServer.stop(done);
 });
+
+
+// We want to keep the socket closed
+// until we say it can open.
+class PendingWebSocket extends WebSocket {
+    awake = false;
+    set readyState(val) {
+        if (val !== WebSocket.OPEN) {
+            this._readyState = val;
+            return;
+        }
+        if (!this.awake) {
+            this._originalDispatchEvent = this.dispatchEvent;
+            this.dispatchEvent = function(evt) {
+                this._delayedEvent = evt;
+            }
+            return;
+        }
+
+        this._readyState = val;
+
+        if (this._originalDispatchEvent && this._delayedEvent) {
+            this.dispatchEvent = this._originalDispatchEvent;
+            this.dispatchEvent(this._delayedEvent);
+        }
+
+    }
+
+    get readyState() {
+        return this._readyState;
+    }
+
+    wakeUp() {
+        this.awake = true;
+        this.readyState = WebSocket.OPEN;
+    }
+}
+
+function retrieveGlobalObject() {
+  if (typeof window !== 'undefined') {
+    return window;
+  }
+
+  return typeof process === 'object' && typeof require === 'function' && typeof global === 'object' ? global : this;
+}
 
 class Socket extends S {
     constructor(props = {}) {
@@ -35,6 +80,35 @@ test('Should accept a token option', done => {
     new Socket({
         token: 'foobar',
     });
+});
+
+
+test('Should queue send actions until the socket has opened', done => {
+    mockServer.stop();
+    mockServer = new Server(url);
+    const globalObject = retrieveGlobalObject();
+
+    globalObject.WebSocket = PendingWebSocket;
+    let fooReceived = false;
+
+    setTimeout(function() {
+        socket.instance.wakeUp();
+    }, 250)
+
+    mockServer.on('message', msg => {
+        msg = JSON.parse(msg);
+        if (!fooReceived) {
+            expect(msg).toEqual({ type: 'foo' })
+            fooReceived = true;
+        }
+
+        expect(msg).toEqual({ type: 'bar' })
+        done()
+
+    });
+    const socket = new Socket();
+    socket.send({ type: 'foo' });
+    socket.send({ type: 'bar' });
 })
 
 test('Should receive a message as object', done => {
@@ -68,7 +142,6 @@ test('Should send pings', done => {
         done()
     });
     new Socket({
-        connectDelay: 50,
         pingInterval: 100,
     });
 });

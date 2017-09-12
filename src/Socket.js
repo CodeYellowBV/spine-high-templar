@@ -6,10 +6,10 @@ export default class Socket {
     instance = null;
     pingIntervalHandle = null;
     publishHandlers = {};
+    pendingSendMessages = [];
 
     pingInterval = 30000;
     reconnectInterval = 2000;
-    connectDelay = 200;
 
     constructor(props = {}) {
         this._events = mitt();
@@ -23,7 +23,7 @@ export default class Socket {
         }
         this.instance = new WebSocket(url);
 
-        for (let propName of ['pingInterval', 'reconnectInterval', 'connectDelay']) {
+        for (let propName of ['pingInterval', 'reconnectInterval']) {
             if (props[propName] !== undefined) {
                 this[propName] = props[propName]
             }
@@ -31,6 +31,7 @@ export default class Socket {
 
         this.instance.onopen = () => {
             this._events.emit('open');
+            this._sendPendingMessages();
             this._initiatePingInterval();
         };
 
@@ -71,11 +72,10 @@ export default class Socket {
         // console.log('[sent]', msg);
         // Wait for a while if the socket is not yet done connecting...
         if (this.instance.readyState !== 1) {
-            setTimeout(() => {
-                this._sendDirectly(msg);
-            }, this.connectDelay);
+            this.pendingSendMessages.push(msg);
             return;
         }
+
         this._sendDirectly(msg);
     }
 
@@ -120,6 +120,12 @@ export default class Socket {
 
         delete this.publishHandlers[requestId];
         this.off('message', handler);
+    }
+
+    _sendPendingMessages() {
+        for (let msg of this.pendingSendMessages) {
+            this._sendDirectly(msg);
+        }
     }
 
     _sendDirectly(msg) {
