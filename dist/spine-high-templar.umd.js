@@ -31,6 +31,26 @@ var createClass = function () {
   };
 }();
 
+
+
+
+
+
+
+var _extends = Object.assign || function (target) {
+  for (var i = 1; i < arguments.length; i++) {
+    var source = arguments[i];
+
+    for (var key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        target[key] = source[key];
+      }
+    }
+  }
+
+  return target;
+};
+
 var Subscription = function () {
     function Subscription() {
         var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -39,11 +59,13 @@ var Subscription = function () {
         this.socket = null;
         this.requestId = null;
         this.onPublish = null;
-        this.wrappedHandler = null;
+        this.onReconnect = null;
+        this.wrappedPublishHandler = null;
         this.messageCached = true;
 
         this.room = props.room;
         this.onPublish = props.onPublish;
+        this.onReconnect = props.onReconnect;
         this.socket = props.socket;
         this.requestId = uuid();
         this._start();
@@ -53,28 +75,46 @@ var Subscription = function () {
         key: '_start',
         value: function _start() {
             if (this.onPublish) {
-                this._startListening();
+                this._startListeningForPublish();
+            }
+            if (this.onReconnect) {
+                this._startListeningForReconnect();
             }
         }
     }, {
-        key: '_startListening',
-        value: function _startListening() {
+        key: '_startListeningForPublish',
+        value: function _startListeningForPublish() {
             var _this = this;
 
-            var wrappedHandler = function wrappedHandler(msg) {
+            this.wrappedPublishHandler = function (msg) {
                 if (msg.requestId !== _this.requestId || msg.type !== 'publish') {
                     return false;
                 }
                 _this.onPublish(msg);
             };
-            this.wrappedHandler = wrappedHandler;
-            this.socket.on('message', wrappedHandler);
+            this.socket.on('message', this.wrappedPublishHandler);
+        }
+    }, {
+        key: '_startListeningForReconnect',
+        value: function _startListeningForReconnect() {
+            var _this2 = this;
+
+            this.wrappedReconnectHandler = function () {
+                if (_this2.messageCached) {
+                    return;
+                }
+                _this2.onReconnect();
+            };
+            this.socket.on('open', this.wrappedReconnectHandler);
         }
     }, {
         key: 'stopListening',
         value: function stopListening() {
-            if (this.wrappedHandler) {
-                this.socket.off('message', this.wrappedHandler);
+            if (this.wrappedPublishHandler) {
+                this.socket.off('message', this.wrappedPublishHandler);
+            }
+            if (this.wrappedReconnectHandler) {
+                this.socket.off('open', this.wrappedReconnectHandler);
             }
         }
     }]);
@@ -182,11 +222,8 @@ var Socket = function () {
         }
     }, {
         key: 'subscribe',
-        value: function subscribe(_ref) {
-            var room = _ref.room,
-                onPublish = _ref.onPublish;
-
-            var sub = new Subscription({ room: room, onPublish: onPublish, socket: this });
+        value: function subscribe(options) {
+            var sub = new Subscription(_extends({ socket: this }, options));
             this.subscriptions.push(sub);
             this.notifySocketOfSubscription(sub).then(function () {
                 sub.messageCached = false;
