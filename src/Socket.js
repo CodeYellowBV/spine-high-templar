@@ -105,14 +105,6 @@ export default class Socket {
         });
     }
 
-    _removePublishHandler(requestId) {
-        const handler = this.publishHandlers[requestId];
-        if (!handler) return;
-
-        delete this.publishHandlers[requestId];
-        this.off('message', handler);
-    }
-
     _sendPendingMessages() {
         for (let msg of this.pendingSendMessages) {
             this._sendDirectly(msg);
