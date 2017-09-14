@@ -6,6 +6,7 @@ export default class Subscription {
     requestId = null;
     onPublish = null;
     wrappedHandler = null;
+    messageCached = true;
 
     constructor(props = {}) {
         this.room = props.room;

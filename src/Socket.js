@@ -6,7 +6,7 @@ export default class Socket {
     instance = null;
     pingIntervalHandle = null;
     subscriptions = [];
-    pendingSendMessages = [];
+    pendingSendActions = [];
 
     pingInterval = 30000;
     reconnectInterval = 2000;
@@ -32,6 +32,7 @@ export default class Socket {
         this.instance.onopen = () => {
             this._events.emit('open');
             this._sendPendingMessages();
+            this._reconnectSubscriptions();
             this._initiatePingInterval();
         };
 
@@ -69,28 +70,53 @@ export default class Socket {
             room: options.room,
             requestId: options.requestId,
         };
-        // console.log('[sent]', msg);
-        // Wait for a while if the socket is not yet done connecting...
+        // If the socket is not connected, push them onto a stack
+        // which will pop when the socket connects.
         if (this.instance.readyState !== 1) {
-            this.pendingSendMessages.push(msg);
-            return;
+            let resolveSend = null;
+            let pSend = new Promise((resolve, reject) => {
+                resolveSend = resolve;
+            });
+            this.pendingSendActions.push({
+                message: msg,
+                resolve: resolveSend,
+            });
+            return pSend;
         }
 
         this._sendDirectly(msg);
+        return Promise.resolve();
+    }
+
+    get pendingSendMessages() {
+        return this.pendingSendActions.map(a => a.message);
     }
 
     subscribe({ room, onPublish }) {
         const sub = new Subscription({ room, onPublish, socket: this });
-
         this.subscriptions.push(sub);
-
-        this.send({
-            type: 'subscribe',
-            requestId: sub.requestId,
-            room,
+        this.notifySocketOfSubscription(sub).then(() => {
+            sub.messageCached = false;
         });
 
         return sub;
+    }
+
+    _reconnectSubscriptions() {
+        for (let sub of this.subscriptions) {
+            if (sub.messageCached) {
+                return;
+            }
+            this.notifySocketOfSubscription(sub);
+        }
+    }
+
+    notifySocketOfSubscription(sub) {
+        return this.send({
+            type: 'subscribe',
+            requestId: sub.requestId,
+            room: sub.room,
+        });
     }
 
     unsubscribe(subscription) {
@@ -98,18 +124,18 @@ export default class Socket {
 
         const subIndex = this.subscriptions.indexOf(subscription);
         this.subscriptions.splice(subIndex, 1);
-        // this._removePublishHandler(requestId);
-        this.send({
+        return this.send({
             type: 'unsubscribe',
             requestId: subscription.requestId,
         });
     }
 
     _sendPendingMessages() {
-        for (let msg of this.pendingSendMessages) {
-            this._sendDirectly(msg);
+        for (let action of this.pendingSendActions) {
+            this._sendDirectly(action.message);
+            action.resolve();
         }
-        this.pendingSendMessages = [];
+        this.pendingSendActions = [];
     }
 
     _sendDirectly(msg) {
