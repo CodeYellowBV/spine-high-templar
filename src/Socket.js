@@ -92,8 +92,8 @@ export default class Socket {
         return this.pendingSendActions.map(a => a.message);
     }
 
-    subscribe({ room, onPublish }) {
-        const sub = new Subscription({ room, onPublish, socket: this });
+    subscribe(options) {
+        const sub = new Subscription({ socket: this, ...options });
         this.subscriptions.push(sub);
         this.notifySocketOfSubscription(sub).then(() => {
             sub.messageCached = false;

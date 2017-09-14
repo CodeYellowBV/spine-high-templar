@@ -5,12 +5,14 @@ export default class Subscription {
     socket = null;
     requestId = null;
     onPublish = null;
-    wrappedHandler = null;
+    onReconnect = null;
+    wrappedPublishHandler = null;
     messageCached = true;
 
     constructor(props = {}) {
         this.room = props.room;
         this.onPublish = props.onPublish;
+        this.onReconnect = props.onReconnect;
         this.socket = props.socket;
         this.requestId = uuid()
         this._start();
@@ -18,24 +20,39 @@ export default class Subscription {
 
     _start() {
         if (this.onPublish) {
-            this._startListening();
+            this._startListeningForPublish();
+        }
+        if (this.onReconnect) {
+            this._startListeningForReconnect();
         }
     }
 
-    _startListening() {
-        const wrappedHandler = msg => {
+    _startListeningForPublish() {
+        this.wrappedPublishHandler = msg => {
             if (msg.requestId !== this.requestId || msg.type !== 'publish') {
                 return false;
             }
             this.onPublish(msg);
         }
-        this.wrappedHandler = wrappedHandler;
-        this.socket.on('message', wrappedHandler)
+        this.socket.on('message', this.wrappedPublishHandler);
+    }
+
+    _startListeningForReconnect() {
+        this.wrappedReconnectHandler = () => {
+            if (this.messageCached){
+                return;
+            }
+            this.onReconnect();
+        }
+        this.socket.on('open', this.wrappedReconnectHandler);
     }
 
     stopListening() {
-        if (this.wrappedHandler) {
-            this.socket.off('message', this.wrappedHandler);
+        if (this.wrappedPublishHandler) {
+            this.socket.off('message', this.wrappedPublishHandler);
+        }
+        if (this.wrappedReconnectHandler) {
+            this.socket.off('open', this.wrappedReconnectHandler);
         }
     }
 }
