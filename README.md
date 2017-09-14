@@ -60,7 +60,38 @@ componentWillUnmount() {
 }
 ```
 
-## Authorization: Token
+### Reconnect
+
+The websocket may disconnect. This can be a client side reason (loss of internet) or a server side reason (deployment). When the websocket has been disconnected, the frontend might be outdated, as publishes may have been missed.
+
+For this reason the subscribe action has a onReconnect callback, where the frontend can refetch/do whatever to make sure it's up to date.
+
+```js
+componentDidMount() {
+    this.subscription = this.props.store.api.socket.subscribe({
+        onPublish: this.handlePublish.bind(this),
+        onReconnect: this.handleReconnect.bind(this),
+        room: {
+            tenant: 16,
+            driver: this.props.screenProps.viewStore.currentUser.id,
+        },
+    });
+}
+
+handlePublish(msg) {
+    this.props.store.add(msg.data);
+}
+
+handleReconnect() {
+    this.props.store.fetch();
+}
+
+componentWillUnmount() {
+    this.props.store.api.socket.unsubscribe(this.subscription);
+}
+```
+
+### Authorization: Token
 
 If the app doesn't use session auth but an Authorization token, one can pass the token under the `token` key in the Socket constructor options. Due to a limitation of the WebSocket available in browsers, it's not possible to add custom headers to a websocket open request, so we handle this in high-templar.
 
