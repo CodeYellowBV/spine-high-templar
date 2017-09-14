@@ -25,14 +25,64 @@ var createClass = function () {
   };
 }();
 
+var Subscription = function () {
+    function Subscription() {
+        var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+        classCallCheck(this, Subscription);
+        this.room = null;
+        this.socket = null;
+        this.requestId = null;
+        this.onPublish = null;
+        this.wrappedHandler = null;
+        this.messageCached = true;
+
+        this.room = props.room;
+        this.onPublish = props.onPublish;
+        this.socket = props.socket;
+        this.requestId = uuid();
+        this._start();
+    }
+
+    createClass(Subscription, [{
+        key: '_start',
+        value: function _start() {
+            if (this.onPublish) {
+                this._startListening();
+            }
+        }
+    }, {
+        key: '_startListening',
+        value: function _startListening() {
+            var _this = this;
+
+            var wrappedHandler = function wrappedHandler(msg) {
+                if (msg.requestId !== _this.requestId || msg.type !== 'publish') {
+                    return false;
+                }
+                _this.onPublish(msg);
+            };
+            this.wrappedHandler = wrappedHandler;
+            this.socket.on('message', wrappedHandler);
+        }
+    }, {
+        key: 'stopListening',
+        value: function stopListening() {
+            if (this.wrappedHandler) {
+                this.socket.off('message', this.wrappedHandler);
+            }
+        }
+    }]);
+    return Subscription;
+}();
+
 var Socket = function () {
     function Socket() {
         var props = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
         classCallCheck(this, Socket);
         this.instance = null;
         this.pingIntervalHandle = null;
-        this.publishHandlers = {};
-        this.pendingSendMessages = [];
+        this.subscriptions = [];
+        this.pendingSendActions = [];
         this.pingInterval = 30000;
         this.reconnectInterval = 2000;
 
@@ -62,6 +112,7 @@ var Socket = function () {
             this.instance.onopen = function () {
                 _this._events.emit('open');
                 _this._sendPendingMessages();
+                _this._reconnectSubscriptions();
                 _this._initiatePingInterval();
             };
 
@@ -106,14 +157,22 @@ var Socket = function () {
                 room: options.room,
                 requestId: options.requestId
             };
-            // console.log('[sent]', msg);
-            // Wait for a while if the socket is not yet done connecting...
+            // If the socket is not connected, push them onto a stack
+            // which will pop when the socket connects.
             if (this.instance.readyState !== 1) {
-                this.pendingSendMessages.push(msg);
-                return;
+                var resolveSend = null;
+                var pSend = new Promise(function (resolve, reject) {
+                    resolveSend = resolve;
+                });
+                this.pendingSendActions.push({
+                    message: msg,
+                    resolve: resolveSend
+                });
+                return pSend;
             }
 
             this._sendDirectly(msg);
+            return Promise.resolve();
         }
     }, {
         key: 'subscribe',
@@ -121,62 +180,29 @@ var Socket = function () {
             var room = _ref.room,
                 onPublish = _ref.onPublish;
 
-            var requestId = uuid();
-
-            if (onPublish) {
-                this._addPublishHandler(requestId, onPublish);
-            }
-
-            this.send({
-                type: 'subscribe',
-                requestId: requestId,
-                room: room
+            var sub = new Subscription({ room: room, onPublish: onPublish, socket: this });
+            this.subscriptions.push(sub);
+            this.notifySocketOfSubscription(sub).then(function () {
+                sub.messageCached = false;
             });
 
-            return requestId;
+            return sub;
         }
     }, {
-        key: 'unsubscribe',
-        value: function unsubscribe(requestId) {
-            this._removePublishHandler(requestId);
-            this.send({
-                type: 'unsubscribe',
-                requestId: requestId
-            });
-        }
-    }, {
-        key: '_addPublishHandler',
-        value: function _addPublishHandler(requestId, handler) {
-            var wrappedHandler = function wrappedHandler(msg) {
-                if (msg.requestId !== requestId || msg.type !== 'publish') {
-                    return false;
-                }
-                handler(msg);
-            };
-            this.on('message', wrappedHandler);
-            this.publishHandlers[requestId] = wrappedHandler;
-        }
-    }, {
-        key: '_removePublishHandler',
-        value: function _removePublishHandler(requestId) {
-            var handler = this.publishHandlers[requestId];
-            if (!handler) return;
-
-            delete this.publishHandlers[requestId];
-            this.off('message', handler);
-        }
-    }, {
-        key: '_sendPendingMessages',
-        value: function _sendPendingMessages() {
+        key: '_reconnectSubscriptions',
+        value: function _reconnectSubscriptions() {
             var _iteratorNormalCompletion = true;
             var _didIteratorError = false;
             var _iteratorError = undefined;
 
             try {
-                for (var _iterator = this.pendingSendMessages[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                    var msg = _step.value;
+                for (var _iterator = this.subscriptions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                    var sub = _step.value;
 
-                    this._sendDirectly(msg);
+                    if (sub.messageCached) {
+                        return;
+                    }
+                    this.notifySocketOfSubscription(sub);
                 }
             } catch (err) {
                 _didIteratorError = true;
@@ -192,6 +218,58 @@ var Socket = function () {
                     }
                 }
             }
+        }
+    }, {
+        key: 'notifySocketOfSubscription',
+        value: function notifySocketOfSubscription(sub) {
+            return this.send({
+                type: 'subscribe',
+                requestId: sub.requestId,
+                room: sub.room
+            });
+        }
+    }, {
+        key: 'unsubscribe',
+        value: function unsubscribe(subscription) {
+            subscription.stopListening();
+
+            var subIndex = this.subscriptions.indexOf(subscription);
+            this.subscriptions.splice(subIndex, 1);
+            return this.send({
+                type: 'unsubscribe',
+                requestId: subscription.requestId
+            });
+        }
+    }, {
+        key: '_sendPendingMessages',
+        value: function _sendPendingMessages() {
+            var _iteratorNormalCompletion2 = true;
+            var _didIteratorError2 = false;
+            var _iteratorError2 = undefined;
+
+            try {
+                for (var _iterator2 = this.pendingSendActions[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                    var action = _step2.value;
+
+                    this._sendDirectly(action.message);
+                    action.resolve();
+                }
+            } catch (err) {
+                _didIteratorError2 = true;
+                _iteratorError2 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                        _iterator2.return();
+                    }
+                } finally {
+                    if (_didIteratorError2) {
+                        throw _iteratorError2;
+                    }
+                }
+            }
+
+            this.pendingSendActions = [];
         }
     }, {
         key: '_sendDirectly',
@@ -215,8 +293,15 @@ var Socket = function () {
                 this.pingIntervalHandle = null;
             }
         }
+    }, {
+        key: 'pendingSendMessages',
+        get: function get$$1() {
+            return this.pendingSendActions.map(function (a) {
+                return a.message;
+            });
+        }
     }]);
     return Socket;
 }();
 
-export { Socket };
+export { Socket, Subscription };
