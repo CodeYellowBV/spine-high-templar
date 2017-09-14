@@ -131,13 +131,10 @@ test('Should send an unsubscribe message when unsubscribing', done => {
 });
 
 // test('Should resubscribe after a socket reconnect', done => {
-//     let connectcount = 0;
+//     let connectCount = 0;
 //     let subscribeCount = 0;
 //     mockServer.on('connection', (server, ws) => {
-//         if (connectcount === 0) {
-//             ws.close();
-//         }
-//         connectcount += 1;
+//         connectCount += 1;
 //     });
 //     mockServer.on('message', msg => {
 //         msg = JSON.parse(msg);
@@ -146,12 +143,16 @@ test('Should send an unsubscribe message when unsubscribing', done => {
 //         expect(msg.room).toEqual(room);
 //         subscribeCount += 1;
 
+//         if (subscribeCount === 1) {
+//             socket.instance.close();
+//         }
+
 //         if (subscribeCount === 2) {
 //             done();
 //         }
 //     })
-//     new Socket({
-//         reconnectInterval: 50,
+//     const socket = new Socket({
 //         pingInterval: 10000,
 //     });
+//     socket.subscribe({ room });
 // });

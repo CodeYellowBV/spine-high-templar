@@ -117,6 +117,7 @@ export default class Socket {
         for (let msg of this.pendingSendMessages) {
             this._sendDirectly(msg);
         }
+        this.pendingSendMessages = [];
     }
 
     _sendDirectly(msg) {

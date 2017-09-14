@@ -87,22 +87,29 @@ test('Should queue send actions until the socket has opened', done => {
     mockServer.stop();
     mockServer = new Server(url);
     const globalObject = retrieveGlobalObject();
+    let messagesReceived = 0;
 
     globalObject.WebSocket = PendingWebSocket;
     let fooReceived = false;
 
     setTimeout(function() {
+        // Check that our sleepy socket hacks workg
+        expect(socket.instance.readyState).toBe(0);
+        expect(messagesReceived).toBe(0);
         socket.instance.wakeUp();
+        expect(socket.instance.readyState).toBe(1);
     }, 250)
 
     mockServer.on('message', msg => {
+        messagesReceived += 1;
         msg = JSON.parse(msg);
         if (!fooReceived) {
-            expect(msg).toEqual({ type: 'foo' })
+            expect(msg).toEqual({ type: 'foo' });
             fooReceived = true;
         }
 
-        expect(msg).toEqual({ type: 'bar' })
+        expect(msg).toEqual({ type: 'bar' });
+        expect(socket.pendingSendMessages).toEqual([]);
         done()
 
     });
