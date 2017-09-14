@@ -20,7 +20,7 @@ The functionality of this package includes:
 
 spine-high-templar offers a Socket model. It is recommended to create this socket in the viewStore and save it in the api instance.
 
-In the store/View constructor
+In the `store/View` constructor:
 ```js
 this.fetchBootstrap().then(() => {
     if (this.bootstrapCode === 200) {
@@ -31,13 +31,14 @@ this.fetchBootstrap().then(() => {
 });
 ```
 
-It is important that the bootstrap has actually succeeded, the high-templar instance will use the headers provided in the socket open request, to authenticate the user against the binder instance.
+It is important that the bootstrap has actually succeeded, the high-templar instance will use the headers provided in the socket-open-request to authenticate the user against the binder instance.
 
 ### Subscribing & unsubscribing
 
 The frontend subscribes to a room (in the form of an object). `onPublish` will be called with every message published in that room.
 
 Don't forget to unsubscribe when a view will unmount.
+
 View example:
 ```js
 componentDidMount() {
@@ -61,7 +62,7 @@ componentWillUnmount() {
 
 ## Authorization: Token
 
-If the app doesn't use session auth, but an Authorization token, one can pass the token when opening the websocket. This is due a limitation of the WebSocket available in browsers, where it's not possible to add custom headers to a websocket open request.
+If the app doesn't use session auth but an Authorization token, one can pass the token under the `token` key in the Socket constructor options. Due to a limitation of the WebSocket available in browsers, it's not possible to add custom headers to a websocket open request, so we handle this in high-templar.
 
 The high-templar instance will add a header `Authorization: Token ${token}` when authenticating against the binder instance.
 
