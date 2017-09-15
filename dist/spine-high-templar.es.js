@@ -300,4 +300,22 @@ var Socket = function () {
     return Socket;
 }();
 
-export { Socket, Subscription };
+var generateUrl = function (pathname) {
+    var loc = window.location;
+    var protocol = void 0;
+
+    switch (loc.protocol) {
+        case 'http:':
+            protocol = 'ws://';
+            break;
+        case 'https:':
+            protocol = 'wss://';
+            break;
+        default:
+            throw new Error('Unknown protocol ' + protocol);
+    }
+
+    return '' + protocol + loc.host + pathname;
+};
+
+export { Socket, Subscription, generateUrl };

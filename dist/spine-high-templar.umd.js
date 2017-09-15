@@ -306,8 +306,27 @@ var Socket = function () {
     return Socket;
 }();
 
+var generateUrl = function (pathname) {
+    var loc = window.location;
+    var protocol = void 0;
+
+    switch (loc.protocol) {
+        case 'http:':
+            protocol = 'ws://';
+            break;
+        case 'https:':
+            protocol = 'wss://';
+            break;
+        default:
+            throw new Error('Unknown protocol ' + protocol);
+    }
+
+    return '' + protocol + loc.host + pathname;
+};
+
 exports.Socket = Socket;
 exports.Subscription = Subscription;
+exports.generateUrl = generateUrl;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
