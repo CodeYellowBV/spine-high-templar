@@ -147,13 +147,11 @@ var Socket = function () {
             }
             this.instance = new WebSocket(url);
 
-            var _arr = ['pingInterval', 'reconnectInterval'];
-            for (var _i = 0; _i < _arr.length; _i++) {
-                var propName = _arr[_i];
+            ['pingInterval', 'reconnectInterval'].forEach(function (propName) {
                 if (props[propName] !== undefined) {
-                    this[propName] = props[propName];
+                    _this[propName] = props[propName];
                 }
-            }
+            });
 
             this.instance.onopen = function () {
                 _this._events.emit('open');
@@ -234,33 +232,14 @@ var Socket = function () {
     }, {
         key: '_reconnectSubscriptions',
         value: function _reconnectSubscriptions() {
-            var _iteratorNormalCompletion = true;
-            var _didIteratorError = false;
-            var _iteratorError = undefined;
+            var _this2 = this;
 
-            try {
-                for (var _iterator = this.subscriptions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                    var sub = _step.value;
-
-                    if (sub.messageCached) {
-                        return;
-                    }
-                    this.notifySocketOfSubscription(sub);
+            this.subscriptions.forEach(function (sub) {
+                if (sub.messageCached) {
+                    return;
                 }
-            } catch (err) {
-                _didIteratorError = true;
-                _iteratorError = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion && _iterator.return) {
-                        _iterator.return();
-                    }
-                } finally {
-                    if (_didIteratorError) {
-                        throw _iteratorError;
-                    }
-                }
-            }
+                _this2.notifySocketOfSubscription(sub);
+            });
         }
     }, {
         key: 'notifySocketOfSubscription',
@@ -286,32 +265,12 @@ var Socket = function () {
     }, {
         key: '_sendPendingMessages',
         value: function _sendPendingMessages() {
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
+            var _this3 = this;
 
-            try {
-                for (var _iterator2 = this.pendingSendActions[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                    var action = _step2.value;
-
-                    this._sendDirectly(action.message);
-                    action.resolve();
-                }
-            } catch (err) {
-                _didIteratorError2 = true;
-                _iteratorError2 = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                        _iterator2.return();
-                    }
-                } finally {
-                    if (_didIteratorError2) {
-                        throw _iteratorError2;
-                    }
-                }
-            }
-
+            this.pendingSendActions.forEach(function (action) {
+                _this3._sendDirectly(action.message);
+                action.resolve();
+            });
             this.pendingSendActions = [];
         }
     }, {
@@ -322,10 +281,10 @@ var Socket = function () {
     }, {
         key: '_initiatePingInterval',
         value: function _initiatePingInterval() {
-            var _this2 = this;
+            var _this4 = this;
 
             this.pingIntervalHandle = setInterval(function () {
-                _this2.instance.send('ping');
+                _this4.instance.send('ping');
             }, this.pingInterval);
         }
     }, {
