@@ -23,11 +23,11 @@ export default class Socket {
         }
         this.instance = new WebSocket(url);
 
-        for (let propName of ['pingInterval', 'reconnectInterval']) {
+        ['pingInterval', 'reconnectInterval'].forEach(propName => {
             if (props[propName] !== undefined) {
                 this[propName] = props[propName]
             }
-        }
+        });
 
         this.instance.onopen = () => {
             this._events.emit('open');
@@ -103,12 +103,12 @@ export default class Socket {
     }
 
     _reconnectSubscriptions() {
-        for (let sub of this.subscriptions) {
+        this.subscriptions.forEach(sub => {
             if (sub.messageCached) {
                 return;
             }
             this.notifySocketOfSubscription(sub);
-        }
+        })
     }
 
     notifySocketOfSubscription(sub) {
@@ -131,10 +131,10 @@ export default class Socket {
     }
 
     _sendPendingMessages() {
-        for (let action of this.pendingSendActions) {
+        this.pendingSendActions.forEach(action => {
             this._sendDirectly(action.message);
             action.resolve();
-        }
+        })
         this.pendingSendActions = [];
     }
 
