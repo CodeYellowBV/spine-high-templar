@@ -1,7 +1,6 @@
 import mitt from 'mitt';
 import Subscription from './Subscription';
 
-
 export default class Socket {
     instance = null;
     pingIntervalHandle = null;
@@ -19,13 +18,13 @@ export default class Socket {
     initialize(props) {
         let url = props.url;
         if (props.token) {
-            url += `?token=${props.token}`
+            url += `?token=${props.token}`;
         }
         this.instance = new WebSocket(url);
 
         ['pingInterval', 'reconnectInterval'].forEach(propName => {
             if (props[propName] !== undefined) {
-                this[propName] = props[propName]
+                this[propName] = props[propName];
             }
         });
 
@@ -108,7 +107,7 @@ export default class Socket {
                 return;
             }
             this.notifySocketOfSubscription(sub);
-        })
+        });
     }
 
     notifySocketOfSubscription(sub) {
@@ -127,6 +126,7 @@ export default class Socket {
         return this.send({
             type: 'unsubscribe',
             requestId: subscription.requestId,
+            room: subscription.room,
         });
     }
 
@@ -134,7 +134,7 @@ export default class Socket {
         this.pendingSendActions.forEach(action => {
             this._sendDirectly(action.message);
             action.resolve();
-        })
+        });
         this.pendingSendActions = [];
     }
 

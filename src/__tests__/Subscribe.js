@@ -3,7 +3,7 @@ import S from '../Socket';
 
 let mockServer = null;
 const url = 'ws://app.test/ws/';
-const room = { foo: 'bar' }
+const room = { foo: 'bar' };
 
 beforeEach(() => {
     mockServer = new Server(url);
@@ -31,8 +31,8 @@ test('Should send a subscribe message when subscribing', done => {
             type: 'subscribe',
             requestId: subscription.requestId,
             room,
-        })
-        done()
+        });
+        done();
     });
 
     subscription = socket.subscribe({ room });
@@ -48,11 +48,11 @@ test('Should add a Subscription when subscribing', done => {
         expect(socket.subscriptions.length).toBe(1);
         expect(socket.subscriptions[0]).toBe(subscription);
         expect(msg.requestId).toBe(subscription.requestId);
-        done()
+        done();
     });
 
     subscription = socket.subscribe({ room });
-})
+});
 
 test('Should trigger onPublish', done => {
     let subscription = null;
@@ -62,26 +62,33 @@ test('Should trigger onPublish', done => {
         msg = JSON.parse(msg);
 
         expect(msg.type).toBe('subscribe');
-        mockServer.send(JSON.stringify({
-            type: 'publish',
-            data: 'bar',
-            requestId: 'fake',
-        }));
-        mockServer.send(JSON.stringify({
-            type: 'publish',
-            data: 'bar',
-            requestId: subscription.requestId,
-        }));
+        mockServer.send(
+            JSON.stringify({
+                type: 'publish',
+                data: 'bar',
+                requestId: 'fake',
+            })
+        );
+        mockServer.send(
+            JSON.stringify({
+                type: 'publish',
+                data: 'bar',
+                requestId: subscription.requestId,
+            })
+        );
     });
 
-    subscription = socket.subscribe({ room, onPublish: (msg) => {
-        expect(msg).toEqual({
-            type: 'publish',
-            data: 'bar',
-            requestId: subscription.requestId,
-        })
-        done();
-    } });
+    subscription = socket.subscribe({
+        room,
+        onPublish: msg => {
+            expect(msg).toEqual({
+                type: 'publish',
+                data: 'bar',
+                requestId: subscription.requestId,
+            });
+            done();
+        },
+    });
 });
 
 test('Should trigger onReconnect', done => {
@@ -89,8 +96,7 @@ test('Should trigger onReconnect', done => {
     let subscribeCount = 0;
     let onReconnectCount = 0;
 
-    const socket = new Socket({
-    });
+    const socket = new Socket({});
 
     mockServer.on('connection', () => {
         connectCount += 1;
@@ -99,7 +105,7 @@ test('Should trigger onReconnect', done => {
             // Reconnect should be fired before the subscribeRefresh is fired
             expect(subscribeCount).toBe(1);
             expect(onReconnectCount).toBe(1);
-            done()
+            done();
         }
     });
     mockServer.on('message', msg => {
@@ -109,7 +115,7 @@ test('Should trigger onReconnect', done => {
         subscribeCount += 1;
 
         if (subscribeCount === 1) {
-            socket.instance.close()
+            socket.instance.close();
         }
     });
 
@@ -133,26 +139,33 @@ test('Should remove onPublish after unsubscribe', done => {
             return;
         }
 
-        mockServer.send(JSON.stringify({
-            type: 'publish',
-            data: 'first',
-            requestId: subscription.requestId,
-        }));
-        mockServer.send(JSON.stringify({
-            type: 'publish',
-            data: 'second',
-            requestId: subscription.requestId,
-        }));
+        mockServer.send(
+            JSON.stringify({
+                type: 'publish',
+                data: 'first',
+                requestId: subscription.requestId,
+            })
+        );
+        mockServer.send(
+            JSON.stringify({
+                type: 'publish',
+                data: 'second',
+                requestId: subscription.requestId,
+            })
+        );
         expect(publishesReceived).toBe(1);
         expect(socket.subscriptions).toEqual([]);
         done();
     });
 
-    subscription = socket.subscribe({ room, onPublish: (msg) => {
-        publishesReceived += 1;
-        socket.unsubscribe(subscription);
-    }});
-})
+    subscription = socket.subscribe({
+        room,
+        onPublish: msg => {
+            publishesReceived += 1;
+            socket.unsubscribe(subscription);
+        },
+    });
+});
 
 test('Should remove onReconnect after unsubscribe', done => {
     let subscription = null;
@@ -161,14 +174,12 @@ test('Should remove onReconnect after unsubscribe', done => {
     let subscribeCount = 0;
     let unSubscribeCount = 0;
 
-    const socket = new Socket({
-    });
+    const socket = new Socket({});
     mockServer.on('connection', () => {
         connectCount += 1;
     });
     mockServer.on('message', msg => {
         msg = JSON.parse(msg);
-
 
         if (msg.type === 'subscribe') {
             subscribeCount += 1;
@@ -177,7 +188,7 @@ test('Should remove onReconnect after unsubscribe', done => {
 
         if (msg.type === 'unsubscribe') {
             unSubscribeCount += 1;
-            socket.instance.close()
+            socket.instance.close();
         }
     });
 
@@ -186,7 +197,7 @@ test('Should remove onReconnect after unsubscribe', done => {
         expect(unSubscribeCount).toBe(1);
         expect(connectCount).toBe(2);
         expect(reconnectCalled).toBe(false);
-        done()
+        done();
     }, 250);
 
     subscription = socket.subscribe({
@@ -195,7 +206,7 @@ test('Should remove onReconnect after unsubscribe', done => {
             reconnectCalled = true;
         },
     });
-})
+});
 
 test('Should send an unsubscribe message when unsubscribing', done => {
     let subscription = null;
@@ -210,17 +221,18 @@ test('Should send an unsubscribe message when unsubscribing', done => {
                 type: 'subscribe',
                 requestId: subscription.requestId,
                 room,
-            })
+            });
             subscribeCalled = true;
-            return
+            return;
         }
 
         expect(subscribeCalled).toBe(true);
         expect(msg).toEqual({
             type: 'unsubscribe',
             requestId: subscription.requestId,
+            room,
         });
-        done()
+        done();
     });
 
     subscription = socket.subscribe({ room });
@@ -237,13 +249,13 @@ test('Should remove its subscriptions when unsubscribing', done => {
 
         if (msg.type === 'subscribe') {
             subscribeCalled = true;
-            return
+            return;
         }
 
         expect(subscribeCalled).toBe(true);
         expect(msg.type).toBe('unsubscribe');
         expect(socket.subscriptions).toEqual([]);
-        done()
+        done();
     });
 
     subscription = socket.subscribe({ room });
@@ -272,7 +284,7 @@ test('Should not try to refresh a subscription when the actual message is pendin
 
     setTimeout(function() {
         expect(subscribeCount).toBe(1);
-        done()
+        done();
     }, 250);
 
     subscription = socket.subscribe({ room });
@@ -310,7 +322,7 @@ test('Should resubscribe after a socket reconnect', done => {
             expect(connectCount).toBe(2);
             done();
         }
-    })
+    });
     const socket = new Socket({
         pingInterval: 10000,
     });
@@ -336,12 +348,12 @@ test('Should not resubscribe after a socket reconnect when unsubscribed', done =
             expect(subscribeCount).toBe(1);
             socket.instance.close();
         }
-    })
+    });
 
     setTimeout(function() {
         expect(connectCount).toBe(2);
         expect(subscribeCount).toBe(1);
-        done()
+        done();
     }, 250);
 
     const socket = new Socket({
